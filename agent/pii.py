@@ -30,10 +30,39 @@ set ở tests/vn_pii_testset.jsonl):
 """
 from __future__ import annotations
 
+import re
+
+# Match on the original string: normalization would change character offsets.
+# A bank label resolves ambiguity with 12-digit CCCD and 0-prefixed phones.
+_PATTERNS = (
+    ("EMAIL", re.compile(
+        r"(?<![\w.+-])[A-Za-z0-9_%+-]+(?:\.[A-Za-z0-9_%+-]+)*"
+        r"@(?:[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\.)+[A-Za-z]{2,}"
+        r"(?![\w-])"), 0),
+    ("VN_BANK_ACCOUNT", re.compile(
+        r"\b(?:STK|số\s+tài\s+khoản|so\s+tai\s+khoan)\b"
+        r"\s*[:=#-]?\s*(?P<value>[0-9]{8,16})(?!\w)", re.IGNORECASE), "value"),
+    ("VN_CCCD", re.compile(r"(?<!\w)[0-9]{12}(?!\w)"), 0),
+    ("VN_PHONE", re.compile(r"(?<!\w)0(?:[ -]?[0-9]){9,10}(?!\w|[ -]?[0-9])"), 0),
+)
+
 
 def detect(text: str) -> list[dict]:
-    raise NotImplementedError("BƯỚC 3a: implement PII detection")
+    """Return non-overlapping spans; explicit bank labels take precedence."""
+    entities = []
+    for entity_type, pattern, group in _PATTERNS:
+        for match in pattern.finditer(text):
+            start, end = match.span(group)
+            if any(start < entity["end"] and entity["start"] < end
+                   for entity in entities):
+                continue
+            entities.append({"type": entity_type, "start": start, "end": end})
+    return sorted(entities, key=lambda entity: entity["start"])
 
 
 def redact(text: str) -> str:
-    raise NotImplementedError("BƯỚC 3a: implement PII redaction")
+    """Replace from right to left so original offsets remain valid."""
+    for entity in reversed(detect(text)):
+        text = (text[:entity["start"]] + f"[REDACTED_{entity['type']}]"
+                + text[entity["end"]:])
+    return text

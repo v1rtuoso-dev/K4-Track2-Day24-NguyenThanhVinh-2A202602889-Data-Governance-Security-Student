@@ -60,6 +60,13 @@ Interface bắt buộc (agent/loop.py import và gọi hàm này nếu tồn t�
 from __future__ import annotations
 
 from pathlib import Path
+from datetime import datetime, timedelta, timezone
+import hashlib
+import json
+import re
+from uuid import uuid4
+
+from agent import ledger, pii, policy, tools
 
 REPORTS_DIR = Path(__file__).resolve().parent.parent / "reports"
 DEFAULT_LEDGER_PATH = REPORTS_DIR / "ledger.jsonl"
@@ -71,4 +78,59 @@ class RunnerScaffoldPending(NotImplementedError):
 
 def handle(message: str, llm, log_dir: Path | None = None,
            principal_id: str = "support_l1") -> str:
-    raise RunnerScaffoldPending("BƯỚC 3c: implement trifecta split")
+    path = Path(log_dir) / "ledger.jsonl" if log_dir is not None else DEFAULT_LEDGER_PATH
+    session = uuid4().hex
+    expires_at = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
+    parent_scopes = ("search_docs", "read_customer")
+
+    def gate(tool, args, classification, purpose, stage, scopes, depth=0, egress=False):
+        context = policy.PolicyContext(
+            data_classification=classification, request_purpose=purpose,
+            agent_owner=f"lab24-agent/{stage}", delegation_depth=depth,
+            egress_enabled=egress, principal_id=principal_id,
+            requested_tool=tool, agent_scopes=scopes,
+            parent_scopes=parent_scopes if depth else (), expires_at=expires_at)
+        allowed, reason = policy.check(context)
+        ledger.append({
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "agent_id": context.agent_owner, "run_id": f"{session}/{stage}",
+            "tool": tool, "args_hash": hashlib.sha256(
+                json.dumps(args, sort_keys=True).encode("utf-8")).hexdigest(),
+            "classification": classification, "decision": "allow" if allowed else "deny",
+            "reason": reason, "on_behalf_of": principal_id, "expires_at": expires_at,
+        }, path)
+        return allowed
+
+    # Run A: untrusted text is confined to this stage; only filename IDs leave it.
+    if not gate("search_docs", {"query": message}, "internal", "summarize-tickets",
+                "run-a", ("search_docs",)):
+        return "Không được phép tìm ticket."
+    docs = tools.search_docs(message)
+    ticket_ids = sorted({int(match.group(1)) for doc in docs
+                         if (match := re.fullmatch(r"ticket-([0-9]+)(?:b)?\.md", doc["id"]))})
+    injected = llm.find_injection("\n\n".join(doc["text"] for doc in docs))
+    safe_docs = [{"id": doc["id"], "text": pii.redact(doc["text"])} for doc in docs]
+    _read_related_customers(ticket_ids, gate)
+    # Record the denied egress capability without executing an attacker instruction.
+    if injected is not None:
+        gate("http_post", {"url": injected.target_url}, "restricted",
+             "support-reply", "run-egress", ("http_post",), depth=1, egress=True)
+    return llm.summarize(safe_docs)
+
+
+def _read_related_customers(ticket_ids: list[int], gate) -> None:
+    """Run B accepts typed IDs only and never reads attacker-provided customer IDs."""
+    if not ticket_ids:
+        return
+    # Authorize BEFORE opening even the private mapping store.
+    if not gate("read_customer", {"ticket_ids": ticket_ids}, "restricted", "support-reply",
+                "run-b", ("read_customer",), depth=1):
+        return
+    customers = json.loads(tools.CUSTOMERS_FILE.read_text(encoding="utf-8"))
+    selected = set(ticket_ids)
+    for customer in customers:
+        if selected.intersection(customer.get("related_tickets", [])):
+            customer_id = customer["customer_id"]
+            if gate("read_customer", {"customer_id": customer_id}, "restricted", "support-reply",
+                    "run-b", ("read_customer",), depth=1):
+                tools.read_customer(customer_id)

@@ -1,0 +1,22 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.12, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\fulld\Projects\AI20K\Lab\K4-Track2-Day24-NguyenThanhVinh-2A202602889-Data-Governance-Security-Student\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\fulld\Projects\AI20K\Lab\K4-Track2-Day24-NguyenThanhVinh-2A202602889-Data-Governance-Security-Student
+configfile: pytest.ini
+plugins: platformdirs-4.13.0
+collecting ... collected 12 items
+
+tests/test_split.py::test_split_never_reads_a_customer_named_only_by_the_attacker PASSED [  8%]
+tests/test_injection.py::test_variant_blocked_after_containment[1-support_l1] PASSED [ 16%]
+tests/test_injection.py::test_variant_blocked_after_containment[1-dpo] PASSED [ 25%]
+tests/test_injection.py::test_variant_blocked_after_containment[2-support_l1] PASSED [ 33%]
+tests/test_injection.py::test_variant_blocked_after_containment[2-dpo] PASSED [ 41%]
+tests/test_injection.py::test_variant_blocked_after_containment[3-support_l1] PASSED [ 50%]
+tests/test_injection.py::test_variant_blocked_after_containment[3-dpo] PASSED [ 58%]
+tests/test_injection.py::test_variant_blocked_after_containment[4-support_l1] PASSED [ 66%]
+tests/test_injection.py::test_variant_blocked_after_containment[4-dpo] PASSED [ 75%]
+tests/test_ledger.py::test_append_chains_hashes PASSED                   [ 83%]
+tests/test_ledger.py::test_verify_detects_tampering PASSED               [ 91%]
+tests/test_ledger.py::test_every_entry_needs_a_non_empty_reason PASSED   [100%]
+
+============================= 12 passed in 4.78s ==============================

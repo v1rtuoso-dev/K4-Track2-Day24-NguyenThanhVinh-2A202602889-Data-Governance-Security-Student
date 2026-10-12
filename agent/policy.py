@@ -35,6 +35,11 @@ không phải xác thực người dùng production.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
+import json
+from pathlib import Path
+
+PRINCIPALS_PATH = Path(__file__).resolve().parent.parent / "data" / "principals.json"
 
 
 @dataclass(frozen=True)
@@ -52,4 +57,33 @@ class PolicyContext:
 
 
 def check(context: PolicyContext) -> tuple[bool, str]:
-    raise NotImplementedError("BƯỚC 3b: implement policy check")
+    if context.data_classification not in {"public", "internal", "restricted"}:
+        return False, "Unknown data classification"
+    if context.data_classification == "restricted" and context.egress_enabled:
+        return False, "Restricted data cannot enter an egress-enabled run"
+    if not context.agent_owner or context.delegation_depth < 0:
+        return False, "Invalid agent identity or delegation depth"
+    try:
+        principals = json.loads(PRINCIPALS_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False, "Trusted principal registry unavailable"
+    principal = principals.get(context.principal_id)
+    if not isinstance(principal, dict):
+        return False, "Unknown principal"
+    if context.request_purpose not in principal.get("purposes", []):
+        return False, "Purpose not authorized for principal"
+    if not context.requested_tool or context.requested_tool not in principal.get("allowed_tools", []):
+        return False, "Tool not authorized for principal"
+    if context.requested_tool not in context.agent_scopes:
+        return False, "Tool missing from agent scope"
+    if context.delegation_depth > 0 and context.requested_tool not in context.parent_scopes:
+        return False, "Tool missing from parent scope"
+    try:
+        expires = datetime.fromisoformat(context.expires_at.replace("Z", "+00:00"))
+        if expires.tzinfo is None or expires.utcoffset().total_seconds() != 0:
+            return False, "Expiry must be timezone-aware UTC"
+    except (ValueError, TypeError, AttributeError):
+        return False, "Invalid expiry timestamp"
+    if expires <= datetime.now(timezone.utc):
+        return False, "Delegation expired"
+    return True, "Principal, purpose, effective tool scope and UTC expiry authorized"

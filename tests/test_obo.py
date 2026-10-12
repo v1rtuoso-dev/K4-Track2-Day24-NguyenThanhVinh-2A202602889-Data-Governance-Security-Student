@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import pytest
 
 from agent import tools
 from agent.loop import run_once
@@ -46,6 +47,34 @@ def test_expired_or_unknown_identity_is_denied():
                     _ctx(principal_id="nobody")):
         allowed, reason = check(context)
         assert allowed is False and reason
+
+
+@pytest.mark.parametrize("changes", [
+    {"data_classification": "secret"},
+    {"request_purpose": "unapproved-purpose"},
+    {"requested_tool": "unknown_tool"},
+    {"agent_scopes": ("search_docs",)},
+    {"delegation_depth": 1, "parent_scopes": ()},
+    {"expires_at": ""},
+    {"expires_at": "not-a-date"},
+    {"expires_at": "2099-01-01T00:00:00"},
+    {"expires_at": "2099-01-01T00:00:00+07:00"},
+])
+def test_invalid_authorization_fields_fail_closed(changes):
+    allowed, reason = check(_ctx(**changes))
+    assert allowed is False and reason
+
+
+def test_support_does_not_open_private_mapping_store(tmp_path, monkeypatch):
+    original = Path.read_text
+
+    def guarded_read(path, *args, **kwargs):
+        assert path.resolve() != tools.CUSTOMERS_FILE.resolve(), "Private store opened before authorization"
+        return original(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", guarded_read)
+    run_once("Tổng hợp các ticket còn mở tuần này", mock=True,
+             log_dir=tmp_path, principal_id="support_l1")
 
 
 def test_runner_checks_principal_at_tool_boundary(clean_sink, tmp_path, monkeypatch):

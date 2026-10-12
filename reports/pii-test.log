@@ -1,0 +1,17 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\fulld\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\fulld\Projects\AI20K\Lab\K4-Track2-Day24-NguyenThanhVinh-2A202602889-Data-Governance-Security-Student
+configfile: pytest.ini
+plugins: platformdirs-4.13.0
+collecting ... collected 4 items
+
+tests/test_pii.py::test_pii_detection_precision_recall 
+[pii] gold=118 pred=118 tp=118
+[pii] precision=1.000 recall=1.000
+PASSED
+tests/test_pii.py::test_redact_removes_detected_entities PASSED
+tests/test_pii.py::test_exact_spans_overlap_and_reverse_redaction PASSED
+tests/test_pii.py::test_no_numeric_fragments_inside_longer_values PASSED
+
+============================== 4 passed in 0.05s ==============================

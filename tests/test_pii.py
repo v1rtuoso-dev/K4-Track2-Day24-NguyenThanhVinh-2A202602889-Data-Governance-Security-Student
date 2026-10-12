@@ -66,3 +66,29 @@ def test_redact_removes_detected_entities():
     for entity in detected:
         original_value = text[entity["start"] : entity["end"]]
         assert original_value not in redacted, f"redact() vẫn còn lộ {original_value!r}"
+
+
+def test_exact_spans_overlap_and_reverse_redaction():
+    text = ("Liên hệ: CCCD 012345678912; STK: 012345678901; "
+            "số tài khoản 0912345678; SĐT 0912-345-678; email a.b+lab@example.vn.")
+    values = [
+        ("VN_CCCD", "012345678912"),
+        ("VN_BANK_ACCOUNT", "012345678901"),
+        ("VN_BANK_ACCOUNT", "0912345678"),
+        ("VN_PHONE", "0912-345-678"),
+        ("EMAIL", "a.b+lab@example.vn"),
+    ]
+    entities = pii.detect(text)
+    assert entities == [
+        {"type": kind, "start": text.index(value), "end": text.index(value) + len(value)}
+        for kind, value in values
+    ]
+    assert [(e["type"], text[e["start"]:e["end"]]) for e in entities] == values
+    assert pii.redact(text) == (
+        "Liên hệ: CCCD [REDACTED_VN_CCCD]; STK: [REDACTED_VN_BANK_ACCOUNT]; "
+        "số tài khoản [REDACTED_VN_BANK_ACCOUNT]; SĐT [REDACTED_VN_PHONE]; "
+        "email [REDACTED_EMAIL].")
+
+
+def test_no_numeric_fragments_inside_longer_values():
+    assert pii.detect("Mã 12345678901234567; 0912345678901; KH-000999.") == []

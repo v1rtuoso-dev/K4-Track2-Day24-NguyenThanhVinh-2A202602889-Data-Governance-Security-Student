@@ -38,11 +38,36 @@ rồi gọi verify() phải trả về False.
 from __future__ import annotations
 
 from pathlib import Path
+import hashlib
+import json
+
+
+def _hash(entry: dict) -> str:
+    content = {key: value for key, value in entry.items() if key != "hash"}
+    return hashlib.sha256(json.dumps(content, sort_keys=True).encode("utf-8")).hexdigest()
 
 
 def append(entry: dict, path: Path) -> dict:
-    raise NotImplementedError("BƯỚC 3d: implement ledger append")
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else []
+    result = dict(entry)
+    result["prev_hash"] = json.loads(lines[-1])["hash"] if lines else "0" * 64
+    result["hash"] = _hash(result)
+    with path.open("a", encoding="utf-8") as stream:
+        stream.write(json.dumps(result, ensure_ascii=False) + "\n")
+    return result
 
 
 def verify(path: Path) -> bool:
-    raise NotImplementedError("BƯỚC 3d: implement ledger verify")
+    previous = "0" * 64
+    try:
+        for line in Path(path).read_text(encoding="utf-8").splitlines():
+            entry = json.loads(line)
+            if (not isinstance(entry.get("reason"), str) or not entry["reason"].strip()
+                    or entry.get("prev_hash") != previous or entry.get("hash") != _hash(entry)):
+                return False
+            previous = entry["hash"]
+    except (OSError, ValueError, TypeError, AttributeError):
+        return False
+    return True

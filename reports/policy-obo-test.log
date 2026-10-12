@@ -1,0 +1,41 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.14, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\fulld\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\fulld\Projects\AI20K\Lab\K4-Track2-Day24-NguyenThanhVinh-2A202602889-Data-Governance-Security-Student
+configfile: pytest.ini
+plugins: platformdirs-4.13.0
+collecting ... collected 31 items
+
+tests/test_policy.py::test_restricted_with_egress_is_denied PASSED       [  3%]
+tests/test_policy.py::test_restricted_with_egress_is_denied_even_for_a_fully_authorized_principal PASSED [  6%]
+tests/test_policy.py::test_internal_read_without_egress_can_be_allowed PASSED [  9%]
+tests/test_policy.py::test_public_data_never_triggers_the_minimum_deny_rule PASSED [ 12%]
+tests/test_obo.py::test_support_l1_cannot_read_restricted_customer PASSED [ 16%]
+tests/test_obo.py::test_dpo_can_read_for_valid_purpose PASSED            [ 19%]
+tests/test_obo.py::test_delegation_cannot_expand_parent_scope PASSED     [ 22%]
+tests/test_obo.py::test_expired_or_unknown_identity_is_denied PASSED     [ 25%]
+tests/test_obo.py::test_invalid_authorization_fields_fail_closed[changes0] PASSED [ 29%]
+tests/test_obo.py::test_invalid_authorization_fields_fail_closed[changes1] PASSED [ 32%]
+tests/test_obo.py::test_invalid_authorization_fields_fail_closed[changes2] PASSED [ 35%]
+tests/test_obo.py::test_invalid_authorization_fields_fail_closed[changes3] PASSED [ 38%]
+tests/test_obo.py::test_invalid_authorization_fields_fail_closed[changes4] PASSED [ 41%]
+tests/test_obo.py::test_invalid_authorization_fields_fail_closed[changes5] PASSED [ 45%]
+tests/test_obo.py::test_invalid_authorization_fields_fail_closed[changes6] PASSED [ 48%]
+tests/test_obo.py::test_invalid_authorization_fields_fail_closed[changes7] PASSED [ 51%]
+tests/test_obo.py::test_invalid_authorization_fields_fail_closed[changes8] PASSED [ 54%]
+tests/test_obo.py::test_support_does_not_open_private_mapping_store PASSED [ 58%]
+tests/test_obo.py::test_runner_checks_principal_at_tool_boundary PASSED  [ 61%]
+tests/test_split.py::test_split_never_reads_a_customer_named_only_by_the_attacker PASSED [ 64%]
+tests/test_ledger.py::test_append_chains_hashes PASSED                   [ 67%]
+tests/test_ledger.py::test_verify_detects_tampering PASSED               [ 70%]
+tests/test_ledger.py::test_every_entry_needs_a_non_empty_reason PASSED   [ 74%]
+tests/test_injection.py::test_variant_blocked_after_containment[1-support_l1] PASSED [ 77%]
+tests/test_injection.py::test_variant_blocked_after_containment[1-dpo] PASSED [ 80%]
+tests/test_injection.py::test_variant_blocked_after_containment[2-support_l1] PASSED [ 83%]
+tests/test_injection.py::test_variant_blocked_after_containment[2-dpo] PASSED [ 87%]
+tests/test_injection.py::test_variant_blocked_after_containment[3-support_l1] PASSED [ 90%]
+tests/test_injection.py::test_variant_blocked_after_containment[3-dpo] PASSED [ 93%]
+tests/test_injection.py::test_variant_blocked_after_containment[4-support_l1] PASSED [ 96%]
+tests/test_injection.py::test_variant_blocked_after_containment[4-dpo] PASSED [100%]
+
+============================= 31 passed in 5.51s ==============================
