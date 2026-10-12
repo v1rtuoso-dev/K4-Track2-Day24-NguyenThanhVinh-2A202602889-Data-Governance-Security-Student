@@ -1,118 +1,85 @@
-# Verification — điền trước khi nộp
+# Verification — kết quả CP5, 12/10/2026 (Asia/Saigon)
 
-- OS / Python / Gitleaks version:
-- `python -m pytest tests/ -q`:
-- `pre-commit run --all-files`:
-- Ledger verify:
-- Các lỗi còn lại:
+Windows; Python .venv **3.12.12**; Gitleaks **8.30.1**; pre-commit **4.6.2**.
+Lượt CP3a/3b trước đây dùng runtime Python 3.12.14; hiện .venv hoạt động.
+Kết luận trước đây “interpreter bị mất” chưa có căn cứ và đã được sửa.
 
-## CP3a — Phát hiện và che PII (12/10/2026)
+## Lệnh/output từng checkpoint
 
-Kết quả thật, lưu ở [pii-test.log](pii-test.log):
+Thực gọi `.venv/Scripts/python.exe` cho lượt hiện tại; các lệnh bên dưới
+viết dưới dạng python khi .venv đã activate. Các log CP3 trước đó là lượt
+đã chạy, không giả định chúng là lần CP5 mới.
 
-```text
-[pii] gold=118 pred=118 tp=118
-[pii] precision=1.000 recall=1.000
-4 passed in 0.05s
-```
+| Checkpoint | Lệnh | Output/evidence |
+|---|---|---|
+| CP2 | `python -m agent.check_lure corpus/ticket-90*.md` | `4/4 lure sẵn sàng`, reports/check-lure.log; replay baseline 4 POST, reports/attack-before.log dòng 1–4 |
+| CP3a | `python -m pytest tests/test_pii.py -v -s --basetemp=.pytest_tmp` | 4 passed; gold=118 pred=118 tp=118; precision=1.000 recall=1.000, reports/pii-test.log:10–11 |
+| CP3b/3c | `python -m pytest tests/test_policy.py tests/test_obo.py tests/test_split.py tests/test_ledger.py tests/test_injection.py -v --basetemp=.pytest_tmp` | 31 passed, reports/policy-obo-test.log:41 |
+| CP3d/3e | `python -m pytest tests/test_split.py tests/test_injection.py tests/test_ledger.py -v --basetemp=.pytest_tmp` | 12 passed, không skip, reports/split-ledger-test.log:22 |
+| CP3e tamper | Sửa reason một dòng giữa trên bản sao tạm, gọi verify | Gốc True, bản sao False; reports/ledger-verification.json; không sửa bản gốc |
+| CP4 history | `gitleaks git --config .gitleaks.toml --redact .` | Exit 1 mong đợi, 1 finding; commit 1bdd849, rule lab24-synthetic-token; reports/gitleaks-history.json:3,13 |
+| CP4 current | `gitleaks dir --config .gitleaks.toml --redact .` | Exit 0, no leaks found; reports/gitleaks-current-first.log và gitleaks-current-final.log |
+| CP4 lock | `python -m piptools compile --generate-hashes -o requirements.lock requirements.txt` | Exit 0, 11 package pin/hash, reports/lock-compile.log |
+| CP4 install | `python -m pip install --require-hashes -r requirements.lock` | Exit 0, already satisfied; reports/lock-install.log; chưa chứng minh cài sạch |
+| CP4 hook | `python -m pre_commit install`; `python -m pre_commit run --all-files` | Hook cài .git/hooks/pre-commit, Passed; reports/pre-commit.log:2 |
+| CP4 test | `python -m pytest tests/test_supply_chain.py -v --basetemp=.pytest_tmp` | 3 passed, reports/supply-chain-test.log |
+| CP5 | `python -m pytest tests/ -q --basetemp=.pytest_tmp` | **45 passed in 2.47s; 0 failed; 0 skipped**, reports/cp5-tests.log:2 |
 
-Precision = 118/118 = 100%; recall = 118/118 = 100%, vượt ngưỡng
-recall >95% của mức cao nhất trong RUBRIC.md trên bộ mẫu này.
-Test đo TP theo cùng loại và vùng giao nhau, không đòi offset trùng tuyệt
-đối với gold. Test bổ sung kiểm `text[start:end]` bằng đúng giá trị mong
-đợi, end exclusive, nhãn STK không nằm trong vùng che, ưu tiên tài khoản
-có nhãn khi trùng CCCD/điện thoại, redaction nhiều vùng và không khớp mảnh
-số trong chuỗi dài hơn. Không thay đổi bộ gold hoặc cách tính điểm.
+PII recall trên bộ mẫu vượt >95% rubric. Metric dùng overlap cùng loại;
+exact slice/overlap/redaction có test bổ sung. Regex không xác thực số thật,
+không bao phủ mọi kiểu email/PII/zero-width. Xem agent/pii.py và dpia-lite.md.
 
-`agent/pii.py` dùng regex trên chuỗi gốc để giữ offset ký tự Unicode.
-Ưu tiên EMAIL, tài khoản có nhãn, CCCD, rồi điện thoại; bỏ vùng giao với
-vùng đã nhận diện. `redact` thay từ cuối về đầu bằng `[REDACTED_<TYPE>]`.
+## CP5 — đúng thứ tự, có sink thật sau test
 
-Giới hạn: regex nhận dạng hình thức, không xác thực CCCD, số điện thoại
-hay tài khoản có thật. Số 12 chữ số không có nhãn vẫn có thể là mã khác;
-tài khoản thiếu nhãn STK/số tài khoản có thể bị bỏ sót hoặc nhầm thành
-CCCD/điện thoại. Điện thoại hỗ trợ đầu 0, tổng 10–11 số và dấu cách/gạch
-ngang, chưa hỗ trợ +84 hoặc dấu ngoặc. CCCD/tài khoản phải là số ASCII
-liền nhau; email chỉ hỗ trợ dạng ASCII thông dụng, không bao quát toàn
-bộ chuẩn email. Chưa nhận PERSON, địa chỉ hoặc dữ liệu bị cố ý làm rối
-bằng zero-width. Kết quả 100% trên bộ synthetic không chứng minh độ phủ
-100% trên dữ liệu thực; tích hợp gate vào boundary của runner thuộc CP3
-tiếp theo.
-
-## CP3b / CP3c — Policy và OBO (12/10/2026)
-
-`agent/policy.py` kiểm classification, chặn restricted + egress trước
-mọi quyền DPO, rồi kiểm registry principal, purpose, requested tool,
-agent scope, parent scope khi delegation_depth > 0 và expires_at UTC
-chưa hết hạn. Mọi allow/deny có reason. Thời hạn sai định dạng, thiếu múi
-giờ hoặc không phải UTC đều bị deny.
-
-`agent/runner.py` gọi policy và ledger trước search_docs/read_customer.
-support_l1 bị deny trước cả lúc mở customers.json để tra mapping; dpo
-vẫn đọc được hồ sơ có related_tickets hợp lệ. Run A chỉ chuyển ticket ID
-số lấy từ tên file sang Run B; mã khách trong text không quyết định tool.
-Ledger ghi on_behalf_of, agent_id, run_id riêng, expires_at và reason;
-args_hash thay cho tham số thô. Run có TTL năm phút. Ledger scaffold đã
-được hoàn thiện vì là phụ thuộc bắt buộc để chạy OBO, có hash chain và verify.
-
-Lệnh yêu cầu tương ứng:
+Trước test không có server thủ công chiếm cổng. Pytest tự dùng fixture
+sink, rồi đóng server. Lượt đầu reset báo lỗi stdout cp1252; đã chạy lại
+trọn reset–test–reset sau khi đặt UTF-8, cả ba bước thành công:
 
 ```powershell
-python -m pytest tests/test_policy.py -v --basetemp=.pytest_tmp
-python -m pytest tests/test_obo.py -v --basetemp=.pytest_tmp
+$env:PYTHONIOENCODING='utf-8'
+python sink/sink.py --reset
+python -m pytest tests/ -q --basetemp=.pytest_tmp
+python sink/sink.py --reset
 ```
 
-Kết quả: **31 passed in 5.51s**, không skip. Policy: 4 test; OBO: 15 test
-(gồm các case bổ sung kiểm trường sai và private store không bị mở bởi
-support_l1); split: 1; ledger: 3; injection: 8. Log đầy đủ:
-[policy-obo-test.log](policy-obo-test.log). Lượt đầu trong sandbox có lỗi
-fixture kết nối sink; chạy ngoài sandbox với cùng sink localhost thì pass.
-Các fixture reset sink.log; attack-before.log vẫn là bằng chứng baseline.
-
-Giới hạn: principal registry và --as chỉ mô phỏng quyền, không xác thực
-người dùng. Ledger phục vụ tuần tự trong lab, chưa có khóa cho nhiều writer;
-hash chain không phát hiện cắt đuôi/viết lại toàn bộ nếu không có mốc tin
-cậy bên ngoài. Kết quả này chưa thay cho kiểm toàn bộ suite ở checkpoint
-Prove hoặc chứng cứ attack-after.log/ledger chạy tay.
-
-## CP3d / CP3e — Split và ledger thật (12/10/2026)
-
-Chạy bằng Python 3.12.12 trong `.venv`:
+Sau reset thứ hai, bật `python -u sink/sink.py` trong terminal riêng,
+output xác nhận sink đang nghe http://127.0.0.1:10024. Terminal còn lại:
 
 ```powershell
-python -m pytest tests/test_split.py tests/test_injection.py tests/test_ledger.py -v --basetemp=.pytest_tmp
+$env:PYTHONIOENCODING='utf-8'
 python -m agent.loop --mock --as dpo "Tổng hợp các ticket còn mở tuần này"
+Copy-Item -LiteralPath reports/sink.log -Destination reports/attack-after.log
+(Get-Item reports/attack-after.log).Length
 python -c "from agent.ledger import verify; from pathlib import Path; print(verify(Path('reports/ledger.jsonl')))"
 ```
 
-Thực gọi `.venv/Scripts/python.exe` để chọn đúng interpreter; stdout UTF-8.
-Fixture sink bị sandbox chặn kết nối ở lượt đầu; chạy lại ngoài sandbox
-thành công: **12 passed in 4.78s**, không SKIP. Split: 1; injection: 8
-(4 lure × 2 principal); ledger: 3. Log: [split-ledger-test.log](split-ledger-test.log).
-Split test chứng minh KH-000777 không bị đọc từ text attacker nhưng vẫn
-đọc khách hợp lệ. Các lure vẫn được đọc và nhận diện trong injection test.
+Agent: “Đã tổng hợp 45 ticket” (reports/cp5-agent.log:1).
+Kích thước attack-after.log: **0** byte. Ledger verify: **True**.
+Dòng **72** reports/ledger.jsonl là http_post deny, on_behalf_of dpo,
+reason `Restricted data cannot enter an egress-enabled run`. Run ID:
+đọc nguyên entry trong reports/cp5-evidence.json, không suy đoán số dòng.
+Baseline reports/attack-before.log dòng 1–4 đều có POST /reconcile chứa
+record synthetic KH-000999. Sink được Ctrl+C sau khi copy log, không reset
+sau replay. Không dùng log ngay sau pytest làm bằng chứng không rò rỉ.
 
-Run A chỉ trích số từ tên ticket và che PII trước summarize. Run B chỉ
-nhận list[int], tra related_tickets sau khi được policy cho phép mở private
-store và kiểm lần nữa trước từng read_customer. Kiểm gửi nằm ở run-egress
-riêng, chỉ hash tham số URL của lure; không truyền hồ sơ hay text sang đó.
-Policy restricted + egress từ chối trước khi thực hiện network.
+Mỗi lượt agent thêm dòng ledger; 72 là dòng thực tế của CP5 này. Ledger
+không chứa hồ sơ thô, chỉ hash tham số. Các test chứng minh support_l1
+không mở store và dpo vẫn đọc khách hợp lệ; KH-000777 không được đọc chỉ
+vì nằm trong text. Hash chain kiểm gốc thành công nhưng không tự chống
+cắt đuôi/viết lại toàn bộ nếu thiếu mốc tin cậy bên ngoài.
 
-Lượt chạy tay trả “Đã tổng hợp 45 ticket”; output đầy đủ:
-[dpo-run.log](dpo-run.log). Ledger thật: [ledger.jsonl](ledger.jsonl).
-verify trả **True**. Dòng deny của lượt này có:
+## Lỗi đã gặp và giới hạn xác minh
 
-```json
-{"tool":"http_post","classification":"restricted","decision":"deny","reason":"Restricted data cannot enter an egress-enabled run","on_behalf_of":"dpo","agent_id":"lab24-agent/run-egress","run_id":"d7ea490b8e65401691540fa74c6328fd/run-egress"}
-```
+- Gitleaks history exit 1 là finding token giả mong đợi, không phải lỗi CP4.
+- Không có false positive .venv; không sửa allowlist/tắt rule.
+- stdout cp1252 gây UnicodeEncodeError ở reset; dùng PYTHONIOENCODING=utf-8.
+- **NOT_VERIFIED:** cài sạch dependencies từ môi trường trống và tái kiểm
+  hash artifact đã cài; pip hiện báo already satisfied.
+- **NOT_VERIFIED:** điều khoản pháp luật cụ thể; chỉ xác minh tên/số văn
+  bản trên link chính thức. Compliance mapping ghi “chưa xác minh”.
+- **NOT_VERIFIED:** model thật, authentication production, cách ly OS,
+  mọi hình thức PII hoặc tính an toàn tuyệt đối của dependency.
 
-Đây là trích các field của dòng thật, không thay thế nguyên dòng ledger.
-Mỗi entry còn có args_hash, ts, expires_at, prev_hash và hash. Ledger không
-ghi hồ sơ hoặc tham số PII thô. Lượt kiểm gửi không gọi tools.http_post.
-
-Tự kiểm tamper: sao chép ledger vào thư mục tạm, thêm ` TAMPERED` vào
-reason của dòng giữa, giữ nguyên hash. verify bản sao trả **False**,
-verify bản gốc vẫn **True**; kết quả và số dòng:
-[ledger-verification.json](ledger-verification.json). Không sửa ledger thật.
-Số dòng tăng khi chạy lại agent. Hash chain không tự phát hiện cắt đuôi
-nếu thiếu mốc tin cậy bên ngoài.
+Báo cáo: compliance-mapping.md (4 cột, nguồn chính thức, file:dòng),
+dpia-lite.md (4 câu hỏi), secrets-incident.md (token giả và ứng phó nếu thật).
+Không khẳng định mô phỏng này là chứng nhận tuân thủ pháp luật.

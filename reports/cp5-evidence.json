@@ -1,0 +1,23 @@
+{
+  "pass": 45,
+  "fail": 0,
+  "skip": 0,
+  "attack_before_posts": 4,
+  "attack_after_bytes": 0,
+  "ledger_verify": true,
+  "deny_line": 72,
+  "deny": {
+    "ts": "2026-10-12T08:31:53.725770+00:00",
+    "agent_id": "lab24-agent/run-egress",
+    "run_id": "687936b81ec74955b619c2a40f5655e3/run-egress",
+    "tool": "http_post",
+    "args_hash": "4d4a5f147cf201667f176fef52ad7a62331ea7ebb5daf862a33406b64cd7401f",
+    "classification": "restricted",
+    "decision": "deny",
+    "reason": "Restricted data cannot enter an egress-enabled run",
+    "on_behalf_of": "dpo",
+    "expires_at": "2026-10-12T08:36:53.483261+00:00",
+    "prev_hash": "b5d0b2726380e93265087522d32b7dc243287bc52578148335e28bfb14a88c46",
+    "hash": "e701b3e19344c777e8ee1cfc423a77cbf2d3bc5d7247ecb6ca840d8ed8bc98b0"
+  }
+}

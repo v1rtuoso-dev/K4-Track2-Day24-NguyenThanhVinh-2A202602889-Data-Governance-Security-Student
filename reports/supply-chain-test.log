@@ -1,0 +1,13 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.12, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\fulld\Projects\AI20K\Lab\K4-Track2-Day24-NguyenThanhVinh-2A202602889-Data-Governance-Security-Student\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\fulld\Projects\AI20K\Lab\K4-Track2-Day24-NguyenThanhVinh-2A202602889-Data-Governance-Security-Student
+configfile: pytest.ini
+plugins: platformdirs-4.13.0
+collecting ... collected 3 items
+
+tests/test_supply_chain.py::test_gitleaks_hook_is_pinned PASSED          [ 33%]
+tests/test_supply_chain.py::test_dependency_lock_has_hashes PASSED       [ 66%]
+tests/test_supply_chain.py::test_incident_note_identifies_synthetic_leak PASSED [100%]
+
+============================== 3 passed in 0.03s ==============================
